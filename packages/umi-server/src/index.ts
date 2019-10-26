@@ -4,19 +4,23 @@ import { load } from 'cheerio';
 import compose from './compose';
 import _log from './debug';
 import { nodePolyfillDecorator, injectChunkMaps, _getDocumentHandler } from './utils';
+import React from 'react'
 
 interface ICunkMap {
   js: string[];
   css: string[];
 }
+
 type IArgs = {
   chunkMap: ICunkMap;
 };
 type cheerio = ReturnType<typeof load>;
 export type IHandler = ($: cheerio, args: IArgs) => cheerio;
+
 export interface IPolyfill {
   host?: string;
 }
+
 export interface IConfig {
   /** prefix path for `filename` and `manifest`, if both in the same directory */
   root: string;
@@ -28,22 +32,28 @@ export interface IConfig {
   polyfill?: boolean | IPolyfill;
   /** use renderToStaticMarkup  */
   staticMarkup?: boolean;
+  /** replace the default ReactDOMServer.renderToString */
+  renderToString?: (htmlElement: any, rootContainer: React.ReactChild, matchPath: React.ReactChild, g_initialData: any) => Promise<string>
   /** handler function for user to modify render html */
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */
   serverless?: boolean;
 }
+
 type renderOpts = Pick<IConfig, 'polyfill'>
+
 export interface IContext {
   req: {
     url: string;
   };
 }
+
 export interface IResult {
   ssrHtml: string;
   matchPath: string;
   chunkMap: ICunkMap;
 }
+
 type IServer = (config: IConfig) => (ctx: IContext, renderOpts?: renderOpts) => Promise<IResult>;
 
 const server: IServer = config => {
@@ -54,6 +64,7 @@ const server: IServer = config => {
     staticMarkup = false,
     polyfill = false,
     postProcessHtml = $ => $,
+    renderToString,
   } = config;
   const polyfillHost = typeof polyfill === 'object' && polyfill.host
     ? polyfill.host
@@ -74,10 +85,11 @@ const server: IServer = config => {
       ? `${renderOpts.polyfill.host}${url}`
       : url
     );
-    const { htmlElement, matchPath, g_initialData } = await serverRender.default(ctx);
-    const renderString = ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
-      htmlElement,
-    );
+    const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
+    const renderString = renderToString ? await renderToString(htmlElement, rootContainer, matchPath, g_initialData) :
+      ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
+        htmlElement,
+      );
     const chunkMap: ICunkMap = manifestFile[matchPath];
 
     const handlerOpts = {

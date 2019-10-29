@@ -38,9 +38,8 @@ export interface IConfig {
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */
   serverless?: boolean;
-}
 
-type renderOpts = Pick<IConfig, 'polyfill'>
+type renderOpts = Pick<IConfig, 'polyfill'>;
 
 export interface IContext {
   req: {
@@ -66,9 +65,8 @@ const server: IServer = config => {
     postProcessHtml = $ => $,
     renderToString,
   } = config;
-  const polyfillHost = typeof polyfill === 'object' && polyfill.host
-    ? polyfill.host
-    : 'http://localhost';
+  const polyfillHost =
+    typeof polyfill === 'object' && polyfill.host ? polyfill.host : 'http://localhost';
   const nodePolyfill = nodePolyfillDecorator(!!polyfill, polyfillHost);
   const serverRender = require(filename);
   const manifestFile = require(manifest);
@@ -81,9 +79,10 @@ const server: IServer = config => {
       req: { url },
     } = ctx;
     // polyfill pathname
-    nodePolyfill(typeof renderOpts.polyfill === 'object' && renderOpts.polyfill.host
-      ? `${renderOpts.polyfill.host}${url}`
-      : url
+    nodePolyfill(
+      typeof renderOpts.polyfill === 'object' && renderOpts.polyfill.host
+        ? `${renderOpts.polyfill.host}${url}`
+        : url,
     );
     const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
     const renderString = renderToString ? await renderToString(htmlElement, rootContainer, matchPath, g_initialData) :
@@ -95,7 +94,9 @@ const server: IServer = config => {
     const handlerOpts = {
       chunkMap,
     };
-    const processHtmlHandlers = Array.isArray(postProcessHtml) ? postProcessHtml : [postProcessHtml]
+    const processHtmlHandlers = Array.isArray(postProcessHtml)
+      ? postProcessHtml
+      : [postProcessHtml];
     const composeRender = compose(
       injectChunkMaps,
       // user define handler

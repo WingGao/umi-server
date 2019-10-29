@@ -1,21 +1,27 @@
-require("regenerator-runtime/runtime");
+require('regenerator-runtime/runtime');
 const server = require('umi-server');
 const Koa = require('koa');
+const compress = require('koa-compress');
+const mount = require('koa-mount');
 const { join, extname } = require('path');
-const serve = require('koa-static-router');
+
 const isDev = process.env.NODE_ENV === 'development';
 
 const root = join(__dirname, 'dist');
 const render = server({
   root: join(__dirname, 'dist'),
   polyfill: true,
-})
+});
 
 const app = new Koa();
-app.use(serve({
-  dir: root,
-  router: '/dist/',
-}));
+app.use(
+  compress({
+    filter: contentType => /text/i.test(contentType),
+    threshold: 2048,
+    flush: require('zlib').Z_SYNC_FLUSH,
+  }),
+);
+
 app.use(async (ctx, next) => {
   const ext = extname(ctx.request.path);
   // 符合要求的路由才进行服务端渲染，否则走静态文件逻辑
@@ -28,7 +34,7 @@ app.use(async (ctx, next) => {
     const { ssrHtml } = await render({
       req: {
         url: ctx.request.url,
-      }
+      },
     });
 
     ctx.body = ssrHtml;
@@ -36,6 +42,8 @@ app.use(async (ctx, next) => {
     await next();
   }
 });
+
+app.use(mount('/dist', require('koa-static')(root)));
 
 if (!process.env.NOW_ZEIT_ENV) {
   app.listen(3000);

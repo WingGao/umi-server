@@ -47,7 +47,7 @@ export interface IRenderOpts extends Pick<IConfig, 'polyfill'> {
   runInMockContext?: object | IContextFunc;
 }
 
-export interface ICustomRenderArgs {
+export interface IRenderArgs {
   htmlElement: any;
   rootContainer: ReactInstance;
   matchPath: ReactInstance;
@@ -97,7 +97,7 @@ const server: IServer = config => {
     nodePolyfill(renderOpts, {
       url,
     });
-    const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
+    const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx) as IRenderArgs;
     const renderString = customRender ? await customRender({ 
             htmlElement, rootContainer, matchPath, g_initialData
     }) : ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](

@@ -35,7 +35,7 @@ export interface IConfig {
   /** use renderToStaticMarkup  */
   staticMarkup?: boolean;
   /** replace the default ReactDOMServer.renderToString */
-  customRender?: (args: ICustomRenderArgs) => Promise<string>
+  customRender?: (args: IRenderArgs) => Promise<string>
   /** handler function for user to modify render html accounding cheerio */
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */

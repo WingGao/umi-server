@@ -35,7 +35,7 @@ export interface IConfig {
   /** use renderToStaticMarkup  */
   staticMarkup?: boolean;
   /** replace the default ReactDOMServer.renderToString */
-  customRender?: (htmlElement: any, rootContainer: ReactInstance, matchPath: ReactInstance, g_initialData: any) => Promise<string>
+  customRender?: (args: ICustomRenderArgs) => Promise<string>
   /** handler function for user to modify render html accounding cheerio */
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */
@@ -47,6 +47,12 @@ export interface IRenderOpts extends Pick<IConfig, 'polyfill'> {
   runInMockContext?: object | IContextFunc;
 }
 
+export interface ICustomRenderArgs {
+  htmlElement: any;
+  rootContainer: ReactInstance;
+  matchPath: ReactInstance;
+  g_initialData: any;
+}
 
 export interface IContext {
   req: {
@@ -92,8 +98,9 @@ const server: IServer = config => {
       url,
     });
     const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
-    const renderString = customRender ? await customRender(htmlElement, rootContainer, matchPath, g_initialData) :
-      ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
+    const renderString = customRender ? await customRender({ 
+            htmlElement, rootContainer, matchPath, g_initialData
+    }) : ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
         htmlElement,
       );
     const chunkMap: IDynamicChunkMap = manifestFile[matchPath];

@@ -6,13 +6,13 @@ import _log from './debug';
 import { nodePolyfillDecorator, injectChunkMaps, _getDocumentHandler } from './utils';
 import { ReactInstance } from 'react';
 
-interface ICunkMap {
+interface IDynamicChunkMap {
   js: string[];
   css: string[];
 }
 
 type IArgs = {
-  chunkMap: ICunkMap;
+  chunkMap: IDynamicChunkMap;
 };
 type cheerio = ReturnType<typeof load>;
 export type IHandler = ($: cheerio, args: IArgs) => cheerio;
@@ -21,9 +21,11 @@ export interface IPolyfill {
   host?: string;
 }
 
+type IContextFunc = () => object;
+
 export interface IConfig {
   /** prefix path for `filename` and `manifest`, if both in the same directory */
-  root: string;
+  root?: string;
   /** ssr manifest, default: `${root}/ssr-client-mainifest.json` */
   manifest?: string;
   /** umi ssr server file, default: `${root}/umi.server.js` */
@@ -34,12 +36,17 @@ export interface IConfig {
   staticMarkup?: boolean;
   /** replace the default ReactDOMServer.renderToString */
   customRender?: (htmlElement: any, rootContainer: ReactInstance, matchPath: ReactInstance, g_initialData: any) => Promise<string>
-  /** handler function for user to modify render html */
+  /** handler function for user to modify render html accounding cheerio */
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */
   serverless?: boolean;
 }
-type renderOpts = Pick<IConfig, 'polyfill'>;
+
+export interface IRenderOpts extends Pick<IConfig, 'polyfill'> {
+  /** mock global object like { g_lang: 'zh-CN' } => global.window.g_lang / global.g_lang  */
+  runInMockContext?: object | IContextFunc;
+}
+
 
 export interface IContext {
   req: {
@@ -50,10 +57,12 @@ export interface IContext {
 export interface IResult {
   ssrHtml: string;
   matchPath: string;
-  chunkMap: ICunkMap;
+  chunkMap: IDynamicChunkMap;
 }
 
-type IServer = (config: IConfig) => (ctx: IContext, renderOpts?: renderOpts) => Promise<IResult>;
+export type IServer = (
+  config: IConfig,
+) => (ctx: IContext, renderOpts?: IRenderOpts) => Promise<IResult>;
 
 const server: IServer = config => {
   const {
@@ -79,17 +88,15 @@ const server: IServer = config => {
       req: { url },
     } = ctx;
     // polyfill pathname
-    nodePolyfill(
-      typeof renderOpts.polyfill === 'object' && renderOpts.polyfill.host
-        ? `${renderOpts.polyfill.host}${url}`
-        : url,
-    );
+    nodePolyfill(renderOpts, {
+      url,
+    });
     const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
     const renderString = customRender ? await customRender(htmlElement, rootContainer, matchPath, g_initialData) :
       ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
         htmlElement,
       );
-    const chunkMap: ICunkMap = manifestFile[matchPath];
+    const chunkMap: IDynamicChunkMap = manifestFile[matchPath];
 
     const handlerOpts = {
       chunkMap,

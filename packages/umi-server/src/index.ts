@@ -4,7 +4,7 @@ import { load } from 'cheerio';
 import compose from './compose';
 import _log from './debug';
 import { nodePolyfillDecorator, injectChunkMaps, _getDocumentHandler } from './utils';
-import React from 'react'
+import { ReactInstance } from 'react';
 
 interface ICunkMap {
   js: string[];
@@ -33,12 +33,12 @@ export interface IConfig {
   /** use renderToStaticMarkup  */
   staticMarkup?: boolean;
   /** replace the default ReactDOMServer.renderToString */
-  renderToString?: (htmlElement: any, rootContainer: React.ReactChild, matchPath: React.ReactChild, g_initialData: any) => Promise<string>
+  customRender?: (htmlElement: any, rootContainer: ReactInstance, matchPath: ReactInstance, g_initialData: any) => Promise<string>
   /** handler function for user to modify render html */
   postProcessHtml?: IHandler | IHandler[];
   /** TODO: serverless */
   serverless?: boolean;
-
+}
 type renderOpts = Pick<IConfig, 'polyfill'>;
 
 export interface IContext {
@@ -63,7 +63,7 @@ const server: IServer = config => {
     staticMarkup = false,
     polyfill = false,
     postProcessHtml = $ => $,
-    renderToString,
+    customRender,
   } = config;
   const polyfillHost =
     typeof polyfill === 'object' && polyfill.host ? polyfill.host : 'http://localhost';
@@ -85,7 +85,7 @@ const server: IServer = config => {
         : url,
     );
     const { htmlElement, rootContainer, matchPath, g_initialData } = await serverRender.default(ctx);
-    const renderString = renderToString ? await renderToString(htmlElement, rootContainer, matchPath, g_initialData) :
+    const renderString = customRender ? await customRender(htmlElement, rootContainer, matchPath, g_initialData) :
       ReactDOMServer[staticMarkup ? 'renderToStaticMarkup' : 'renderToString'](
         htmlElement,
       );
